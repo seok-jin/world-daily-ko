@@ -24,7 +24,7 @@ try:
 except ImportError:
     pass
 
-from fetch import fetch_all
+from fetch import fetch_all, Article
 from summarize import summarize_all
 from render import render
 from push import push_all
@@ -91,8 +91,29 @@ def main() -> int:
     new_arts = [a for a in arts if a.link not in seen_links]
     print(f"      → 수집 {len(arts)}건, 신규 {len(new_arts)}건 ({time.time()-t0:.1f}s)", flush=True)
 
+    # 실패 항목 재처리 (RSS에서 이미 사라진 경우라도 JSON에 남아있으면 직접 재시도)
+    failed_items = [it for it in existing_items if _is_failed(it)]
+    if failed_items:
+        print(f"      · 기존 실패 항목 {len(failed_items)}건 → 즉시 재시도", flush=True)
+        failed_arts = [
+            Article(
+                category=it["category"], title=it["title"],
+                summary=it.get("summary", ""), link=it["link"],
+                published=it.get("published", ""),
+            )
+            for it in failed_items
+        ]
+        retried = summarize_all(failed_arts, mode=mode)
+        retried_by_link = {r["link"]: r for r in retried}
+        existing_items = [
+            retried_by_link.get(it["link"], it) if _is_failed(it) else it
+            for it in existing_items
+        ]
+        recovered = sum(1 for it in existing_items if it["link"] in retried_by_link and not _is_failed(it))
+        print(f"      · 재처리 결과: {recovered}/{len(failed_items)}건 복구", flush=True)
+
     if not new_arts:
-        # 신규 없음 — JSON last_update만 갱신해서 Streamlit 표시 신선도 유지
+        # 신규 없음 — JSON last_update만 갱신 (실패 재처리 결과는 위에서 existing_items에 반영됨)
         payload = {
             "date": today,
             "last_update": datetime.now(KST).isoformat(timespec="seconds"),
@@ -100,7 +121,9 @@ def main() -> int:
             "last_new_count": 0,
         }
         json_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"\n✅ 신규 기사 없음 — last_update만 갱신 ({time.time()-t0:.1f}s)")
+        # render도 갱신 (md 파일도 fresh)
+        render(existing_items, REPORTS_DIR)
+        print(f"\n✅ 신규 기사 없음 — last_update + render 갱신 ({time.time()-t0:.1f}s)")
         return 0
 
     bodies = None
