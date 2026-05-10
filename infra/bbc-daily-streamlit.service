@@ -1,0 +1,19 @@
+[Unit]
+Description=BBC Daily KO — Streamlit Viewer
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/bbc_daily_report
+EnvironmentFile=/home/ubuntu/bbc_daily_report/.env
+ExecStart=/home/ubuntu/bbc_daily_report/.venv/bin/streamlit run app.py \
+    --server.port 8504 \
+    --server.address 0.0.0.0 \
+    --server.headless true \
+    --browser.gatherUsageStats false
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

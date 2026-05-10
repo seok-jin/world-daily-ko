@@ -1,0 +1,4 @@
+# BBC Daily KO — 매일 KST 08:00 (UTC 23:00) 자동 실행
+# 등록: crontab -e 후 아래 한 줄 추가
+
+0 23 * * * cd /home/ubuntu/bbc_daily_report && ./.venv/bin/python main.py >> run.log 2>&1
