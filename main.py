@@ -31,6 +31,8 @@ from push import push_all
 
 REPORTS_DIR = Path(__file__).parent / "reports"
 
+DEDUPE_WINDOW_DAYS = 7
+
 def _load_existing(json_path: Path) -> tuple[list[dict], str | None]:
     """오늘 자 JSON에서 기존 items + last_update 로드 (구·신 포맷 모두 지원)."""
     if not json_path.exists():
@@ -42,6 +44,27 @@ def _load_existing(json_path: Path) -> tuple[list[dict], str | None]:
     if isinstance(data, dict):
         return data.get("items", []), data.get("last_update")
     return data, None  # 구 포맷 (list)
+
+def _recent_links(reports_dir: Path, days: int = DEDUPE_WINDOW_DAYS) -> set[str]:
+    """최근 N일치 JSON에서 본 적 있는 모든 link 집합."""
+    cutoff = datetime.now(KST).date() - timedelta(days=days)
+    links: set[str] = set()
+    for jp in reports_dir.glob("*.json"):
+        try:
+            d = datetime.strptime(jp.stem, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if d < cutoff:
+            continue
+        try:
+            data = json.loads(jp.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        items = data.get("items", []) if isinstance(data, dict) else data
+        for it in items:
+            if "link" in it:
+                links.add(it["link"])
+    return links
 
 def main() -> int:
     p = argparse.ArgumentParser()
@@ -58,10 +81,10 @@ def main() -> int:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     existing_items, _ = _load_existing(json_path)
-    existing_links = {it["link"] for it in existing_items}
-    print(f"[1/4] BBC RSS 수집 (카테고리당 {args.per}건, 기존 {len(existing_items)}건 재사용)...", flush=True)
+    seen_links = _recent_links(REPORTS_DIR, days=DEDUPE_WINDOW_DAYS)
+    print(f"[1/4] BBC RSS 수집 (카테고리당 {args.per}건, 오늘 {len(existing_items)}건 / 최근 {DEDUPE_WINDOW_DAYS}일 dedupe pool {len(seen_links)}건)...", flush=True)
     arts = fetch_all(per_category=args.per)
-    new_arts = [a for a in arts if a.link not in existing_links]
+    new_arts = [a for a in arts if a.link not in seen_links]
     print(f"      → 수집 {len(arts)}건, 신규 {len(new_arts)}건 ({time.time()-t0:.1f}s)", flush=True)
 
     if not new_arts:

@@ -64,14 +64,25 @@ def push_telegram(report_path: Path, new_items: list[dict] | None = None,
     base_url = os.environ.get("REPORT_BASE_URL", "").rstrip("/")
 
     # 메시지 구성: 신규 기사 우선, 없으면 md에서 Top5 추출
+    # 링크는 Streamlit 딥링크 — 클릭하면 해당 기사 카드로 이동
+    from translate import link_hash
+    def _streamlit_url(link: str) -> str:
+        if not base_url:
+            return link  # base url 없으면 폴백 BBC 원문
+        return f"{base_url}/?date={report_path.stem}&article={link_hash(link)}"
+
     if new_items:
-        cat_label = {"World":"🌍","Business":"💼","Technology":"💻","Science":"🔬","Health":"🏥"}
-        headlines = [(f"{cat_label.get(it['category'],'')} {it['ko_title']}", it["link"])
-                     for it in new_items[:7]]
+        from fetch import CATEGORIES
+        headlines = []
+        for it in new_items[:7]:
+            label = CATEGORIES.get(it["category"], {}).get("label", it["category"])
+            emoji_only = label.split()[0] if label else ""
+            headlines.append((f"{emoji_only} {it['ko_title']}", _streamlit_url(it["link"])))
         header = f"📰 *BBC 신규 {len(new_items)}건 — {report_path.stem}*"
     else:
         md = report_path.read_text(encoding="utf-8")
-        headlines = _extract_top_headlines(md, n=5)
+        raw_headlines = _extract_top_headlines(md, n=5)
+        headlines = [(t, _streamlit_url(l) if l else "") for t, l in raw_headlines]
         header = f"📰 *BBC 데일리 리포트 — {report_path.stem}*"
 
     lines = [header]

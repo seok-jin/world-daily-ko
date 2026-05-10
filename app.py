@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 PROJECT_DIR = Path(__file__).parent
 load_dotenv(PROJECT_DIR / ".env")
 
-from translate import translate_article
+from translate import translate_article, link_hash
 from fetch import CATEGORIES
 
 REPORTS_DIR = PROJECT_DIR / "reports"
@@ -128,6 +128,15 @@ if last_update:
 st.title(f"BBC 데일리 리포트 — {selected}")
 st.caption(f"📊 총 {len(items)}건{ts_caption}  ·  출처: BBC News")
 
+# ── 텔레그램 딥링크로 진입한 기사 우선 표시 ──
+focus_hash = qp.get("article", None)
+focused = None
+if focus_hash:
+    for it in items:
+        if link_hash(it["link"]) == focus_hash:
+            focused = it
+            break
+
 # 카테고리별 그룹핑
 by_cat: dict[str, list[dict]] = {}
 for it in items:
@@ -142,16 +151,6 @@ group_choice = st.radio(
     key="group_radio",
 )
 group_key = "topic" if "토픽" in group_choice else "region"
-
-cat_order = [
-    c for c in CATEGORIES
-    if CATEGORIES[c]["group"] == group_key and c in by_cat
-]
-if not cat_order:
-    st.info(f"이 그룹에 해당하는 기사가 아직 없습니다. 사이드바의 `🔄 지금 갱신` 클릭해보세요.")
-    st.stop()
-
-tabs = st.tabs([f"{CAT_LABEL[c]} ({len(by_cat[c])})" for c in cat_order])
 
 @st.fragment
 def render_article_card(it: dict, idx: int, cat: str):
@@ -189,6 +188,29 @@ def render_article_card(it: dict, idx: int, cat: str):
                 st.error(f"번역 실패: {e}")
 
     st.divider()
+
+# 포커스된 기사 (텔레그램 링크 진입) 상단 하이라이트
+if focus_hash:
+    if focused:
+        with st.container(border=True):
+            st.markdown(f"📌 **텔레그램 링크에서 진입한 기사** — {CAT_LABEL.get(focused['category'], focused['category'])}")
+            render_article_card(focused, 1, f"focus_{focused['category']}")
+        if st.button("← 전체 리포트로", type="secondary"):
+            st.query_params.pop("article")
+            st.rerun()
+        st.divider()
+    else:
+        st.warning(f"링크의 기사를 현재 리포트에서 찾을 수 없습니다 (오래된 링크일 수 있음). 전체 리포트를 보여드립니다.")
+
+cat_order = [
+    c for c in CATEGORIES
+    if CATEGORIES[c]["group"] == group_key and c in by_cat
+]
+if not cat_order:
+    st.info("이 그룹에 해당하는 기사가 아직 없습니다. 사이드바의 `🔄 지금 갱신` 클릭해보세요.")
+    st.stop()
+
+tabs = st.tabs([f"{CAT_LABEL[c]} ({len(by_cat[c])})" for c in cat_order])
 
 for tab, cat in zip(tabs, cat_order):
     with tab:
