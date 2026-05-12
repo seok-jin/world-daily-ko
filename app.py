@@ -230,7 +230,7 @@ def render_article_card(it: dict, idx: int, cat: str):
         state.toggle_starred(h)
         st.rerun(scope="fragment")
 
-    if st.session_state.get(state_key):
+    if st.session_state.get(trans_state_key):
         with st.spinner("gemini가 본문을 번역 중... (최초 1회만, 다음부터는 캐시)"):
             try:
                 text, cached = translate_article(url, it["title"])
