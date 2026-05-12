@@ -2,7 +2,7 @@
 
 > BBC News의 5개 카테고리 기사를 매일 자동 수집 → AI CLI로 한국어 번역·요약 → Markdown 리포트 생성 → Telegram·이메일 푸시까지 수행하는 일일 뉴스 다이제스트 시스템.
 
-작성일: 2026-05-10  ·  GitHub: <https://github.com/seok-jin/bbc-daily-ko>
+작성일: 2026-05-10  ·  GitHub: <https://github.com/seok-jin/world-daily-ko>
 
 ---
 
@@ -121,7 +121,7 @@ BBC_AI_BACKEND=gemini ./.venv/bin/python main.py
 | EC2 경로 | `/home/ubuntu/bbc_daily_report/` |
 | Python | EC2 3.10.12 / 로컬 Windows 3.14 |
 | AI CLI | EC2 gemini 0.35.3 / 로컬 Claude Code 2.1.89 |
-| GitHub | <https://github.com/seok-jin/bbc-daily-ko> (public) |
+| GitHub | <https://github.com/seok-jin/world-daily-ko> (public) |
 
 ---
 
