@@ -1,4 +1,4 @@
-"""BBC Daily KO — Streamlit 뷰어 (on-demand 본문 번역 + 수동 새로고침)."""
+"""월드 데일리 KO — Streamlit 뷰어 (on-demand 본문 번역 + 수동 새로고침)."""
 from __future__ import annotations
 import json
 import os
@@ -20,7 +20,7 @@ import state
 REPORTS_DIR = PROJECT_DIR / "reports"
 KST = timezone(timedelta(hours=9))
 
-st.set_page_config(page_title="BBC Daily KO", page_icon="📰", layout="wide")
+st.set_page_config(page_title="월드 데일리 KO", page_icon="📰", layout="wide")
 
 CAT_LABEL = {name: meta["label"] for name, meta in CATEGORIES.items()}
 
@@ -59,8 +59,8 @@ qp = st.query_params
 default_date = qp.get("date", dates[0] if dates else None)
 
 with st.sidebar:
-    st.title("📰 BBC Daily KO")
-    st.caption("BBC 뉴스 한국어 다이제스트 · 30분 갱신")
+    st.title("📰 월드 데일리 KO")
+    st.caption("BBC · Guardian · Al Jazeera · TechCrunch · The Verge · Ars Technica\n\n30분마다 자동 갱신")
 
     if not dates:
         st.warning("아직 리포트 없음.\n사이드바의 `🔄 지금 갱신` 클릭하거나\n`python main.py` 실행 후 새로고침.")
@@ -152,8 +152,10 @@ if last_update:
     except Exception:
         pass
 
-st.title(f"BBC 데일리 리포트 — {selected}")
-st.caption(f"📊 총 {len(items)}건{ts_caption}  ·  출처: BBC News")
+st.title(f"월드 데일리 리포트 — {selected}")
+# 오늘 데이터에 등장한 source들만 표시
+sources_today = sorted({it.get("source", "BBC") for it in items})
+st.caption(f"📊 총 {len(items)}건{ts_caption}  ·  출처: {' · '.join(sources_today)}")
 
 # ── 텔레그램 딥링크로 진입한 기사 우선 표시 ──
 focus_hash = qp.get("article", None)

@@ -1,5 +1,5 @@
 [Unit]
-Description=BBC Daily KO — Streamlit Viewer
+Description=월드 데일리 KO — Streamlit Viewer
 After=network.target
 
 [Service]

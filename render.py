@@ -19,9 +19,10 @@ def render(items: list[dict], out_dir: Path) -> Path:
         grouped[it["category"]].append(it)
 
     lines: list[str] = []
-    lines.append(f"# BBC 데일리 리포트 — {today}")
+    sources = sorted({it.get("source", "BBC") for it in items})
+    lines.append(f"# 월드 데일리 리포트 — {today}")
     lines.append("")
-    lines.append(f"_총 {len(items)}건 · 출처: BBC News_")
+    lines.append(f"_총 {len(items)}건 · 출처: {' · '.join(sources)}_")
     lines.append("")
 
     # 그룹별 목차
