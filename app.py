@@ -122,12 +122,38 @@ with st.sidebar:
     hide_read = st.checkbox("✓ 읽은 글 숨기기", value=True, key="hide_read",
                             help="ON: 읽음 표시한 글 숨김 (기본)  ·  OFF: 회색으로 하단에 정렬되어 표시")
 
-    # ── 키워드 알림 상태 ──
-    wk = os.environ.get("WATCHED_KEYWORDS", "").strip()
-    if wk:
-        st.caption(f"🔔 키워드 알림: `{wk}`")
-    else:
-        st.caption("🔔 키워드 알림: `.env`에 `WATCHED_KEYWORDS=AI,반도체,...` 설정")
+    # ── 키워드 알림 관리 (Streamlit UI에서 즉시 편집) ──
+    current_kws = state.get_keywords()
+    with st.expander(f"🔔 키워드 알림 ({len(current_kws)}개)", expanded=False):
+        st.caption("콤마로 구분 · 빈 값 저장하면 알림 끔 · quiet hours 무시하고 즉시 텔레그램")
+        kw_input = st.text_input(
+            "키워드",
+            value=", ".join(current_kws),
+            key="kw_input",
+            label_visibility="collapsed",
+            placeholder="AI, 반도체, 비트코인, 금리",
+        )
+        c1, c2 = st.columns(2)
+        if c1.button("💾 저장", use_container_width=True, type="primary"):
+            new_kws = state.set_keywords(kw_input)
+            if new_kws:
+                st.success(f"저장됨: {', '.join(new_kws)}")
+            else:
+                st.success("알림 끔")
+            st.rerun()
+        if c2.button("🔄 초기화 (.env)", use_container_width=True,
+                     help=".env의 WATCHED_KEYWORDS 사용으로 복귀"):
+            state.set_keywords("")
+            # set_keywords("") 는 ""을 저장하지만 빈 키워드. .env 폴백 하려면 None으로 만들어야 함
+            import state as _st
+            with _st._lock:
+                s = _st._read_raw()
+                s["keywords"] = None
+                _st._write_raw(s)
+            st.success(".env 값으로 복귀")
+            st.rerun()
+        if current_kws:
+            st.caption(f"현재: `{', '.join(current_kws)}`")
 
     st.divider()
     st.caption("ℹ️ 매 30분 자동 갱신 · KST 22~06시 일반 알림 끔 (키워드 매칭은 항상 알림)")
