@@ -57,6 +57,15 @@ def load_all_recent_items(dates: tuple[str, ...]) -> list[dict]:
 # ── 사이드바 ───────────────────────────────────────────────
 dates = list_dates()
 qp = st.query_params
+
+# 스와이프 deck에서 일괄 읽음 반영 (?swipe_read=h1,h2,...)
+if "swipe_read" in qp:
+    _batch = [h for h in qp["swipe_read"].split(",") if h]
+    if _batch:
+        state.mark_read_batch(_batch)
+    del st.query_params["swipe_read"]
+    st.rerun()
+
 default_date = qp.get("date", dates[0] if dates else None)
 
 with st.sidebar:
@@ -122,41 +131,8 @@ with st.sidebar:
     hide_read = st.checkbox("✓ 읽은 글 숨기기", value=True, key="hide_read",
                             help="ON: 읽음 표시한 글 숨김 (기본)  ·  OFF: 회색으로 하단에 정렬되어 표시")
 
-    # ── 키워드 알림 관리 (Streamlit UI에서 즉시 편집) ──
-    current_kws = state.get_keywords()
-    with st.expander(f"🔔 키워드 알림 ({len(current_kws)}개)", expanded=False):
-        st.caption("콤마로 구분 · 빈 값 저장하면 알림 끔 · quiet hours 무시하고 즉시 텔레그램")
-        kw_input = st.text_input(
-            "키워드",
-            value=", ".join(current_kws),
-            key="kw_input",
-            label_visibility="collapsed",
-            placeholder="AI, 반도체, 비트코인, 금리",
-        )
-        c1, c2 = st.columns(2)
-        if c1.button("💾 저장", use_container_width=True, type="primary"):
-            new_kws = state.set_keywords(kw_input)
-            if new_kws:
-                st.success(f"저장됨: {', '.join(new_kws)}")
-            else:
-                st.success("알림 끔")
-            st.rerun()
-        if c2.button("🔄 초기화 (.env)", use_container_width=True,
-                     help=".env의 WATCHED_KEYWORDS 사용으로 복귀"):
-            state.set_keywords("")
-            # set_keywords("") 는 ""을 저장하지만 빈 키워드. .env 폴백 하려면 None으로 만들어야 함
-            import state as _st
-            with _st._lock:
-                s = _st._read_raw()
-                s["keywords"] = None
-                _st._write_raw(s)
-            st.success(".env 값으로 복귀")
-            st.rerun()
-        if current_kws:
-            st.caption(f"현재: `{', '.join(current_kws)}`")
-
     st.divider()
-    st.caption("ℹ️ 매 30분 자동 갱신 · KST 22~06시 일반 알림 끔 (키워드 매칭은 항상 알림)")
+    st.caption("ℹ️ 매 30분 자동 갱신 · KST 22~06시 알림 끔")
     st.caption("`📖 한글 본문 번역` → gemini가 BBC 원문을 번역 (캐시 공유)")
     st.caption("출처: [BBC News](https://www.bbc.com/news)")
 
@@ -199,10 +175,10 @@ by_cat: dict[str, list[dict]] = {}
 for it in items:
     by_cat.setdefault(it["category"], []).append(it)
 
-# 그룹 선택 (📚 토픽 / 🌐 지역 / ⭐ 저장됨)
+# 그룹 선택 (📚 토픽 / 🌐 지역 / ⭐ 저장됨 / 📱 스와이프)
 group_choice = st.radio(
     "분류",
-    ["📚 토픽", "🌐 지역", "⭐ 저장됨"],
+    ["📚 토픽", "🌐 지역", "⭐ 저장됨", "📱 스와이프"],
     horizontal=True,
     label_visibility="collapsed",
     key="group_radio",
@@ -211,8 +187,10 @@ if "토픽" in group_choice:
     group_key = "topic"
 elif "지역" in group_choice:
     group_key = "region"
-else:
+elif "저장됨" in group_choice:
     group_key = "starred"
+else:
+    group_key = "swipe"
 
 @st.fragment
 def render_article_card(it: dict, idx: int, cat: str):
@@ -374,6 +352,91 @@ if focus_hash:
         st.divider()
     else:
         st.warning("링크의 기사를 현재 리포트에서 찾을 수 없습니다 (오래된 링크일 수 있음). 전체 리포트를 보여드립니다.")
+
+# ── 📱 스와이프 리더 모드 ──
+if group_key == "swipe":
+    st.subheader("📱 스와이프 리더")
+    cats_present = [c for c in CATEGORIES if c in by_cat]
+    options = ["전체"] + [CAT_LABEL[c] for c in cats_present]
+    sel = st.selectbox("카테고리 선택", options, key="swipe_cat")
+    if sel == "전체":
+        pool = items
+    else:
+        _cat = next(c for c in cats_present if CAT_LABEL[c] == sel)
+        pool = by_cat[_cat]
+
+    skipped = st.session_state.setdefault("swipe_skipped", set())
+    unread = [it for it in pool
+              if not state.is_read(link_hash(it["link"])) and link_hash(it["link"]) not in skipped]
+
+    total_unread = sum(1 for it in pool if not state.is_read(link_hash(it["link"])))
+    done = total_unread - len(unread)
+
+    if not unread:
+        if total_unread == 0:
+            st.success("🎉 이 분류의 안 읽은 기사를 모두 처리했어요!")
+        else:
+            st.info(f"건너뛴 {len(skipped & {link_hash(it['link']) for it in pool})}건이 남았습니다.")
+        if st.button("↺ 건너뛴 기사 다시 보기", use_container_width=True):
+            st.session_state["swipe_skipped"] = set()
+            st.rerun()
+        st.stop()
+
+    # 진행 바
+    if total_unread:
+        st.progress(done / total_unread, text=f"{done} / {total_unread} 처리  ·  남은 {len(unread)}건")
+
+    it = unread[0]
+    url = it["link"]; h = link_hash(url)
+    source = it.get("source", "BBC")
+    pub = _format_published(it.get("published", ""))
+    cached = is_cached(url)
+
+    with st.container(border=True):
+        badges = f"`{source}`"
+        if pub:
+            badges += f"  ·  🕒 {pub}"
+        if cached:
+            badges += "  ·  💾 번역됨"
+        st.markdown(badges)
+        st.markdown(f"## {it['ko_title']}")
+        for line in it["ko_summary"].split("\n"):
+            line = line.strip().lstrip("-•·").strip()
+            if line:
+                st.markdown(f"- {line}")
+        st.caption(f"_원문: {it['title']}_")
+
+        # 본문 번역 (옵션)
+        tkey = f"swipe_trans_{h}"
+        if st.button("💾 한글 본문 보기" if cached else "📖 한글 본문 번역",
+                     key=f"btn_{tkey}", use_container_width=True):
+            st.session_state[tkey] = not st.session_state.get(tkey, False)
+            st.rerun()
+        if st.session_state.get(tkey):
+            with st.spinner("번역 중..."):
+                try:
+                    text, _c = translate_article(url, it["title"])
+                    with st.container(border=True):
+                        st.markdown(text)
+                except Exception as e:
+                    st.error(f"번역 실패: {e}")
+
+    # 액션 버튼 (크게)
+    c1, c2, c3, c4 = st.columns([1.2, 1, 1, 1.3])
+    if c1.button("⏭ 건너뛰기", use_container_width=True):
+        st.session_state["swipe_skipped"].add(h)
+        st.rerun()
+    c2.link_button("🔗 원문", url, use_container_width=True)
+    if c3.button("⭐ 저장", use_container_width=True):
+        state.toggle_starred(h)
+        st.rerun()
+    if c4.button("✓ 읽음, 다음 ▶", use_container_width=True, type="primary"):
+        state.toggle_read(h)
+        st.session_state.pop(tkey, None)
+        st.rerun()
+
+    st.caption("⏭ 건너뛰기: 읽음 처리 안 함 (이번 세션에서만 뒤로) · ✓ 읽음: 영구 처리 후 다음 기사")
+    st.stop()
 
 # ── ⭐ 저장됨 모드 ──
 if group_key == "starred":

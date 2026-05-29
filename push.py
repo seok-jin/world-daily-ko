@@ -142,43 +142,6 @@ def push_email(report_path: Path, summary_text: str | None = None) -> None:
         s.sendmail(user, [to], msg.as_string())
     print(f"  · 이메일 전송 완료 → {to}", flush=True)
 
-def push_keyword_alert(matches: list[dict], date_str: str) -> None:
-    """키워드 매칭 알림 — quiet hours 무시 (사용자가 정한 진짜 중요한 것)."""
-    if not matches:
-        return
-    token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    if not (token and chat_id):
-        return
-    base_url = os.environ.get("REPORT_BASE_URL", "").rstrip("/")
-    from translate import link_hash
-    from fetch import CATEGORIES
-
-    lines = [f"🔔 *키워드 매칭 — 신규 {len(matches)}건*"]
-    lines.append("")
-    for it in matches[:10]:
-        hits = ", ".join(it.get("_hits", []))
-        label = CATEGORIES.get(it["category"], {}).get("label", it["category"])
-        emoji = label.split()[0] if label else ""
-        url = (f"{base_url}/?date={date_str}&article={link_hash(it['link'])}"
-               if base_url else it["link"])
-        lines.append(f"{emoji} [{it['ko_title']}]({url})")
-        lines.append(f"   _🏷 {hits}_")
-        lines.append("")
-    text = "\n".join(lines)
-    api = f"https://api.telegram.org/bot{token}"
-    r = requests.post(
-        f"{api}/sendMessage",
-        data={"chat_id": chat_id, "text": text,
-              "parse_mode": "Markdown", "disable_web_page_preview": "true"},
-        timeout=15,
-    )
-    if not r.ok:
-        requests.post(f"{api}/sendMessage",
-                      data={"chat_id": chat_id, "text": text},
-                      timeout=15)
-    print(f"  · 🔔 키워드 알림 전송 ({len(matches)}건)", flush=True)
-
 def push_all(report_path: Path, new_items: list[dict] | None = None,
              total: int | None = None, summary_text: str | None = None) -> None:
     push_telegram(report_path, new_items=new_items, total=total)

@@ -12,7 +12,7 @@ STATE_DIR = Path(__file__).parent / "state"
 STATE_FILE = STATE_DIR / "user.json"
 _lock = Lock()
 
-DEFAULT: dict = {"read": [], "starred": [], "notified": [], "keywords": None}
+DEFAULT: dict = {"read": [], "starred": [], "notified": []}
 
 def _read_raw() -> dict:
     if not STATE_FILE.exists():
@@ -77,21 +77,12 @@ def mark_notified(hashes: list[str]) -> None:
         s["notified"] = sorted(set(s.get("notified", [])) | set(hashes))
         _write_raw(s)
 
-def get_keywords() -> list[str]:
-    """state에 설정된 키워드 (없으면 .env의 WATCHED_KEYWORDS 폴백)."""
-    s = load()
-    kws = s.get("keywords")
-    if kws is None:  # state 미설정 → .env 사용
-        raw = os.environ.get("WATCHED_KEYWORDS", "")
-    else:
-        raw = kws
-    return [k.strip() for k in raw.split(",") if k.strip()]
-
-def set_keywords(raw: str) -> list[str]:
-    """콤마구분 문자열로 저장. 빈 문자열은 알림 끔."""
-    cleaned = ",".join(k.strip() for k in raw.split(",") if k.strip())
+def mark_read_batch(hashes: list[str]) -> None:
+    """여러 항목을 한 번에 읽음 처리 (스와이프 deck 일괄 반영)."""
+    hashes = [h for h in hashes if h]
+    if not hashes:
+        return
     with _lock:
         s = _read_raw()
-        s["keywords"] = cleaned
+        s["read"] = sorted(set(s.get("read", [])) | set(hashes))
         _write_raw(s)
-    return [k.strip() for k in cleaned.split(",") if k.strip()]
