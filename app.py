@@ -400,7 +400,8 @@ if group_key == "swipe":
     cached = is_cached(url)
 
     with st.container(border=True):
-        badges = f"`{source}`"
+        cat_label = CAT_LABEL.get(it["category"], it["category"])
+        badges = f"**{cat_label}**  ·  `{source}`"
         if pub:
             badges += f"  ·  🕒 {pub}"
         if cached:
