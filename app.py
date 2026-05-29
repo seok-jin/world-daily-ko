@@ -369,22 +369,29 @@ if group_key == "swipe":
     unread = [it for it in pool
               if not state.is_read(link_hash(it["link"])) and link_hash(it["link"]) not in skipped]
 
-    total_unread = sum(1 for it in pool if not state.is_read(link_hash(it["link"])))
-    done = total_unread - len(unread)
+    # 현재 미읽음 수
+    cur_unread = sum(1 for it in pool if not state.is_read(link_hash(it["link"])))
+    # 진입 시점의 미읽음 수를 분모로 고정 (스냅샷). 새 기사 유입으로 더 늘면 기준 상향.
+    snap_key = f"swipe_snap_{sel}"
+    if snap_key not in st.session_state or st.session_state[snap_key] < cur_unread:
+        st.session_state[snap_key] = cur_unread
+    total = st.session_state[snap_key]
+    done = total - cur_unread  # 읽음 처리한 건수 (건너뛰기는 미반영)
 
     if not unread:
-        if total_unread == 0:
+        skipped_here = len(skipped & {link_hash(it["link"]) for it in pool})
+        if cur_unread == 0:
             st.success("🎉 이 분류의 안 읽은 기사를 모두 처리했어요!")
         else:
-            st.info(f"건너뛴 {len(skipped & {link_hash(it['link']) for it in pool})}건이 남았습니다.")
+            st.info(f"건너뛴 {skipped_here}건이 남았습니다.")
         if st.button("↺ 건너뛴 기사 다시 보기", use_container_width=True):
             st.session_state["swipe_skipped"] = set()
             st.rerun()
         st.stop()
 
     # 진행 바
-    if total_unread:
-        st.progress(done / total_unread, text=f"{done} / {total_unread} 처리  ·  남은 {len(unread)}건")
+    if total:
+        st.progress(done / total, text=f"{done} / {total} 처리  ·  남은 {len(unread)}건")
 
     it = unread[0]
     url = it["link"]; h = link_hash(url)
