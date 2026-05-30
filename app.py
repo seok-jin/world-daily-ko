@@ -175,22 +175,22 @@ by_cat: dict[str, list[dict]] = {}
 for it in items:
     by_cat.setdefault(it["category"], []).append(it)
 
-# 그룹 선택 (📚 토픽 / 🌐 지역 / ⭐ 저장됨 / 📱 스와이프)
+# 그룹 선택 (📱 스와이프 / 📚 토픽 / 🌐 지역 / ⭐ 저장됨)
 group_choice = st.radio(
     "분류",
-    ["📚 토픽", "🌐 지역", "⭐ 저장됨", "📱 스와이프"],
+    ["📱 스와이프", "📚 토픽", "🌐 지역", "⭐ 저장됨"],
     horizontal=True,
     label_visibility="collapsed",
     key="group_radio",
 )
-if "토픽" in group_choice:
+if "스와이프" in group_choice:
+    group_key = "swipe"
+elif "토픽" in group_choice:
     group_key = "topic"
 elif "지역" in group_choice:
     group_key = "region"
-elif "저장됨" in group_choice:
-    group_key = "starred"
 else:
-    group_key = "swipe"
+    group_key = "starred"
 
 @st.fragment
 def render_article_card(it: dict, idx: int, cat: str):
