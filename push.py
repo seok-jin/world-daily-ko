@@ -78,12 +78,12 @@ def push_telegram(report_path: Path, new_items: list[dict] | None = None,
             label = CATEGORIES.get(it["category"], {}).get("label", it["category"])
             emoji_only = label.split()[0] if label else ""
             headlines.append((f"{emoji_only} {it['ko_title']}", _streamlit_url(it["link"])))
-        header = f"📰 *월드 데일리 신규 {len(new_items)}건 — {report_path.stem}*"
+        header = f"📰 *{os.environ.get('APP_TITLE','월드 데일리')} 신규 {len(new_items)}건 — {report_path.stem}*"
     else:
         md = report_path.read_text(encoding="utf-8")
         raw_headlines = _extract_top_headlines(md, n=5)
         headlines = [(t, _streamlit_url(l) if l else "") for t, l in raw_headlines]
-        header = f"📰 *월드 데일리 리포트 — {report_path.stem}*"
+        header = f"📰 *{os.environ.get('APP_TITLE','월드 데일리 리포트')} — {report_path.stem}*"
 
     lines = [header]
     if total:
@@ -126,7 +126,7 @@ def push_email(report_path: Path, summary_text: str | None = None) -> None:
     msg = MIMEMultipart()
     msg["From"] = user
     msg["To"] = to
-    msg["Subject"] = f"월드 데일리 리포트 — {report_path.stem}"
+    msg["Subject"] = f"{os.environ.get('APP_TITLE','월드 데일리 리포트')} — {report_path.stem}"
     body = summary_text or f"BBC News 한국어 리포트 ({report_path.stem}) — 첨부 파일 참고."
     msg.attach(MIMEText(body, "plain", "utf-8"))
 

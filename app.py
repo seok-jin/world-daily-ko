@@ -21,7 +21,12 @@ import state
 REPORTS_DIR = PROJECT_DIR / "reports"
 KST = timezone(timedelta(hours=9))
 
-st.set_page_config(page_title="월드 데일리 KO", page_icon="📰", layout="wide")
+APP_NAME = os.environ.get("APP_NAME", "월드 데일리 KO")
+APP_TITLE = os.environ.get("APP_TITLE", "월드 데일리 리포트")
+APP_SOURCES = os.environ.get("APP_SOURCES", "BBC · Guardian · Al Jazeera · NPR · TechCrunch · The Verge · Ars Technica · Nikkei Asia · SCMP · CNA")
+APP_PAGE_ICON = os.environ.get("APP_PAGE_ICON", "📰")
+
+st.set_page_config(page_title=APP_NAME, page_icon=APP_PAGE_ICON, layout="wide")
 
 CAT_LABEL = {name: meta["label"] for name, meta in CATEGORIES.items()}
 
@@ -69,8 +74,8 @@ if "swipe_read" in qp:
 default_date = qp.get("date", dates[0] if dates else None)
 
 with st.sidebar:
-    st.title("📰 월드 데일리 KO")
-    st.caption("BBC · Guardian · Al Jazeera · TechCrunch · The Verge · Ars Technica\n\n30분마다 자동 갱신")
+    st.title(f"{APP_PAGE_ICON} {APP_NAME}")
+    st.caption(f"{APP_SOURCES}\n\n30분마다 자동 갱신")
 
     if not dates:
         st.warning("아직 리포트 없음.\n사이드바의 `🔄 지금 갱신` 클릭하거나\n`python main.py` 실행 후 새로고침.")
@@ -156,7 +161,7 @@ if last_update:
     except Exception:
         pass
 
-st.title(f"월드 데일리 리포트 — {selected}")
+st.title(f"{APP_TITLE} — {selected}")
 # 오늘 데이터에 등장한 source들만 표시
 sources_today = sorted({it.get("source", "BBC") for it in items})
 st.caption(f"📊 총 {len(items)}건{ts_caption}  ·  출처: {' · '.join(sources_today)}")
