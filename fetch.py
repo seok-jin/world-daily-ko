@@ -44,15 +44,20 @@ FEEDS: list[tuple[str, str, str]] = [
     # 토픽 — World 강화
     ("World",         "Guardian",   "https://www.theguardian.com/world/rss"),
     ("World",         "Al Jazeera", "https://www.aljazeera.com/xml/rss/all.xml"),
+    ("World",         "NPR",        "https://feeds.npr.org/1004/rss.xml"),
     # 토픽 — Tech 강화
     ("Technology",    "TechCrunch", "https://techcrunch.com/feed/"),
     ("Technology",    "The Verge",  "https://www.theverge.com/rss/index.xml"),
     ("Technology",    "Ars Technica", "https://feeds.arstechnica.com/arstechnica/index"),
+    # 토픽 — Business 강화 (아시아 비즈니스)
+    ("Business",      "Nikkei Asia", "https://asia.nikkei.com/rss/feed/nar"),
     # 지역 — BBC
     ("US & Canada",   "BBC",        "https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml"),
     ("UK",            "BBC",        "https://feeds.bbci.co.uk/news/uk/rss.xml"),
     ("Europe",        "BBC",        "https://feeds.bbci.co.uk/news/world/europe/rss.xml"),
     ("Asia",          "BBC",        "https://feeds.bbci.co.uk/news/world/asia/rss.xml"),
+    ("Asia",          "SCMP",       "https://www.scmp.com/rss/91/feed"),
+    ("Asia",          "CNA",        "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6511"),
     ("Australia",     "BBC",        "https://feeds.bbci.co.uk/news/world/australia/rss.xml"),
     ("Africa",        "BBC",        "https://feeds.bbci.co.uk/news/world/africa/rss.xml"),
     ("Latin America", "BBC",        "https://feeds.bbci.co.uk/news/world/latin_america/rss.xml"),
