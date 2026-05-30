@@ -51,6 +51,11 @@ def _extract_top_headlines(md_text: str, n: int = 5) -> list[tuple[str, str]]:
 
 def push_telegram(report_path: Path, new_items: list[dict] | None = None,
                   total: int | None = None) -> None:
+    # 명시적 잠금 — DISABLE_PUSH=true 면 토큰이 있어도 절대 전송 안 함
+    if os.environ.get("DISABLE_PUSH", "").lower() in ("1", "true", "yes"):
+        print("  · DISABLE_PUSH=true → Telegram 비활성화 (이 인스턴스는 푸시 안 함)", flush=True)
+        return
+
     if _in_quiet_hours():
         print(f"  · Quiet hours (KST {QUIET_START:02d}~{QUIET_END:02d}) → Telegram 스킵", flush=True)
         return
