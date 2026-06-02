@@ -296,18 +296,46 @@ def _arrange(items: list[dict]) -> list[dict]:
         (read if state.is_read(link_hash(it["link"])) else unread).append(it)
     return unread + read
 
-def _format_published(s: str) -> str:
-    """RSS 'published' 문자열 → 한국어 상대시간 / 절대시간."""
-    if not s:
-        return ""
+def _parse_pub_dt(s: str):
+    """RSS published 문자열을 datetime으로 파싱. RFC 2822 / ISO 8601 모두 지원."""
+    # 1) RFC 2822 (예: "Mon, 02 Jun 2026 14:00:00 GMT")
     try:
         dt = parsedate_to_datetime(s)
+        if dt:
+            return dt
+    except Exception:
+        pass
+    # 2) ISO 8601 (예: "2026-06-02T14:00:00-04:00", "2026-06-02T14:00:00Z")
+    try:
+        s2 = s.strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s2)
+        return dt
+    except Exception:
+        pass
+    # 3) 기타 ISO 변종 — 'YYYY-MM-DD HH:MM:SS' 등
+    try:
+        return datetime.strptime(s[:19], "%Y-%m-%dT%H:%M:%S")
+    except Exception:
+        pass
+    return None
+
+def _format_published(s: str) -> str:
+    """RSS 'published' 문자열 → 한국어 상대시간 / 절대시간 (KST)."""
+    if not s:
+        return ""
+    dt = _parse_pub_dt(s)
+    if dt is None:
+        return s[:25]
+    try:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         dt_kst = dt.astimezone(KST)
         now = datetime.now(KST)
         delta = now - dt_kst
         secs = int(delta.total_seconds())
+        if secs < 0:
+            # 미래 시간 (시계 오차)은 '방금 전'으로
+            return "방금 전"
         if secs < 60:
             return "방금 전"
         if secs < 3600:
@@ -318,7 +346,6 @@ def _format_published(s: str) -> str:
             return "어제"
         if delta.days < 7:
             return f"{delta.days}일 전"
-        # 1주 이상은 절대 날짜
         if dt_kst.year == now.year:
             return dt_kst.strftime("%m월 %d일")
         return dt_kst.strftime("%Y-%m-%d")
